@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: ./backend-services/auth-service
+    container_name: auth-service
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PORT: ${AUTH_SERVICE_PORT}
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      JWT_SECRET: ${JWT_SECRET}
+    expose: ["${AUTH_SERVICE_PORT}"]
+
+  cuaderno-service:
+    build: ./backend-services/cuaderno-service
+    container_name: cuaderno-service
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PORT: ${CUADERNO_SERVICE_PORT}
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      # Esta es la línea que hemos añadido para consistencia
+      JWT_SECRET: ${JWT_SECRET}
+    expose: ["${CUADERNO_SERVICE_PORT}"]
+
+  app-web:
+    build: ./frontend-clients/app-web
+    container_name: react-web-app
+    restart: unless-stopped
+    ports: ["3000:80"]
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    restart: unless-stopped
+    ports: ["${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"]
+    depends_on: [cuaderno-service, auth-service]
+
+volumes:
+  db-data:

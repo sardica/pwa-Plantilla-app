@@ -1,0 +1,30 @@
+# Dependencias
+# Ignora las carpetas de dependencias en todo el proyecto.
+# Esto incluye las de la raíz, el frontend y los dos servicios del backend.
+node_modules/
+
+# Archivos de entorno
+# Contienen secretos y configuraciones locales. ¡Nunca deben subirse a GitHub!
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+# Archivos de registro generados por la aplicación.
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Archivos de build y producción
+# Estos se generan automáticamente al construir el proyecto.
+/frontend-clients/app-web/dist
+/frontend-clients/app-web/.vite/
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración del editor
+# Para evitar conflictos con otros desarrolladores que usan diferentes configuraciones.
+.vscode/
