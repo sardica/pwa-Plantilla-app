@@ -1,10 +1,11 @@
-import { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
-// Importamos tanto la librería principal de axios como nuestra instancia personalizada.
+// frontend-clients/app-web/src/contexts/AuthContext.tsx
+
+import { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import axios from 'axios';
-import api from '../api/axios'; // La instancia personalizada para hacer las llamadas.
+import api from '../api/axios';
 import { IFormInputs } from '../pages/types';
 
-// Interfaces para tipar los datos
+// Interfaces
 interface User {
   id: string;
   name: string;
@@ -25,16 +26,20 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Creación del contexto con un valor inicial que cumple con el tipo
+// CORRECCIÓN: Se crea y exporta el contexto. El hook 'useAuth' se moverá a su propio archivo.
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+// --- Interceptor de Axios ---
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return context;
-};
+  return config;
+}, error => {
+  return Promise.reject(error);
+});
+
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
@@ -42,31 +47,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const signup = async (userData: IFormInputs) => {
-    try {
-      const res = await api.post<User>('/auth/register', userData);
-      setUser(res.data);
-      setIsAuthenticated(true);
-    } catch (error: any) {
-      // Usamos el 'axios' principal para la comprobación de tipo.
-      if (axios.isAxiosError(error) && error.response) {
-        setErrors(Array.isArray(error.response.data) ? error.response.data : [error.response.data.message]);
-      }
-    }
-  };
-
   const signin = async (userData: IFormInputs) => {
     try {
-      const res = await api.post<User>('/auth/login', userData);
-      setUser(res.data);
+      const res = await api.post<{ accessToken: string }>('/auth/login', userData);
+      localStorage.setItem('token', res.data.accessToken);
+      const profileRes = await api.get<User>('/auth/profile');
+      setUser(profileRes.data);
       setIsAuthenticated(true);
+      setErrors([]);
     } catch (error: any) {
-      // Usamos el 'axios' principal para la comprobación de tipo.
       if (axios.isAxiosError(error) && error.response) {
          if (Array.isArray(error.response.data)) {
             return setErrors(error.response.data);
          }
-         setErrors([error.response.data.message]);
+         setErrors([error.response.data.message || 'Error al iniciar sesión']);
+      }
+    }
+  };
+
+  const signup = async (userData: IFormInputs) => {
+    try {
+      await api.post('/auth/register', userData);
+      await signin(userData);
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response) {
+        setErrors(Array.isArray(error.response.data) ? error.response.data : [error.response.data.message || 'Error al registrarse']);
       }
     }
   };
@@ -77,6 +82,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error("Error durante el cierre de sesión en el servidor:", error);
     } finally {
+      localStorage.removeItem('token');
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -84,49 +90,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     if (errors.length > 0) {
-      const timer = setTimeout(() => {
-        setErrors([]);
-      }, 5000);
+      const timer = setTimeout(() => setErrors([]), 5000);
       return () => clearTimeout(timer);
     }
   }, [errors]);
 
   useEffect(() => {
     async function checkLogin() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+      
       try {
         const res = await api.get<User>('/auth/verify');
         if (!res.data) {
           setIsAuthenticated(false);
-          setLoading(false);
-          return;
+        } else {
+          setIsAuthenticated(true);
+          setUser(res.data);
         }
-        setIsAuthenticated(true);
-        setUser(res.data);
-        setLoading(false);
       } catch (error) {
         setIsAuthenticated(false);
         setUser(null);
+      } finally {
         setLoading(false);
       }
     }
     checkLogin();
   }, []);
-
-  useEffect(() => {
-    const responseInterceptor = api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response && error.response.status === 401) {
-          signout();
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      api.interceptors.response.eject(responseInterceptor);
-    };
-  }, [signout]);
 
   return (
     <AuthContext.Provider value={{

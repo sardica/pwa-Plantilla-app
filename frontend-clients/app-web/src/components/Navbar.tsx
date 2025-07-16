@@ -1,57 +1,58 @@
+// frontend-clients/app-web/src/components/Navbar.tsx
+
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth'; // Importación corregida
-import { Button } from '@/components/ui/button';
+import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
+// CORRECCIÓN: Se importan los iconos necesarios
+import { Home, BookCopy, User, LogIn, LogOut, PlusCircle } from 'lucide-react';
 
 export function Navbar() {
   const { isAuthenticated, signout, user } = useAuth();
 
   return (
-    <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b">
-      <div className="container h-14 flex items-center">
-        <div className="mr-4 md:flex">
-          <Link to={isAuthenticated ? '/cuadernos' : '/'} className="mr-6 flex items-center space-x-2">
-            <span className="font-bold text-lg">Cuadernos App</span>
-          </Link>
-        </div>
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <ul className="flex items-center gap-x-4">
-            {isAuthenticated ? (
-              <>
-                <li className="text-sm text-muted-foreground">
-                  Bienvenido, {user?.name}
-                </li>
-                <li>
-                  <Button asChild>
-                    <Link to='/add-cuaderno'>Añadir Cuaderno</Link>
-                  </Button>
-                </li>
-                <li>
-                  <Button variant="ghost" onClick={() => signout()}>
-                    Cerrar Sesión
-                  </Button>
-                </li>
-              </>
-            ) : (
-              <>
-                <li>
-                  <Button asChild>
-                    <Link to='/login'>Login</Link>
-                  </Button>
-                </li>
-                <li>
-                  <Button asChild variant="ghost">
-                    <Link to='/register'>Register</Link>
-                  </Button>
-                </li>
-              </>
-            )}
-          </ul>
-          <div className="ml-4">
-             <ThemeToggle />
-          </div>
-        </div>
-      </div>
+    <nav className='bg-zinc-700 my-3 flex justify-between py-5 px-10 rounded-lg'>
+      <Link to={isAuthenticated ? '/cuadernos' : '/'}>
+        <h1 className='text-2xl font-bold'>Didaktos</h1>
+      </Link>
+      <ul className='flex items-center gap-x-4'>
+        {isAuthenticated ? (
+          <>
+            <li className='hidden sm:block'>
+              Bienvenido, {user?.name}!
+            </li>
+            <li>
+              <Link to='/add-cuaderno' className='flex items-center gap-x-1 bg-indigo-500 px-4 py-2 rounded-md'>
+                <PlusCircle size={20} /> {/* Icono de Añadir */}
+                <span className='hidden sm:inline'>Nuevo Cuaderno</span>
+              </Link>
+            </li>
+            <li>
+              <Link to='/' onClick={() => signout()} className='flex items-center gap-x-1'>
+                <LogOut size={20} /> {/* Icono de Salir */}
+                <span className='hidden sm:inline'>Salir</span>
+              </Link>
+            </li>
+          </>
+        ) : (
+          <>
+            <li>
+              <Link to='/login' className='flex items-center gap-x-1'>
+                <LogIn size={20} /> {/* Icono de Iniciar Sesión */}
+                Login
+              </Link>
+            </li>
+            <li>
+              <Link to='/register' className='flex items-center gap-x-1'>
+                <User size={20} /> {/* Icono de Registrarse */}
+                Register
+              </Link>
+            </li>
+          </>
+        )}
+        <li>
+          <ThemeToggle />
+        </li>
+      </ul>
     </nav>
   );
 }

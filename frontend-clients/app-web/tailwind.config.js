@@ -1,9 +1,11 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: ["class"],
+export default {
+  darkMode: ["class"], // Habilita el modo oscuro basado en una clase
   content: [
-    './index.html', // Escanea el archivo HTML principal
-    './src/**/*.{js,ts,jsx,tsx}', // Escanea todos los tipos de archivos en tu carpeta src
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
   ],
   prefix: "",
   theme: {
@@ -15,6 +17,8 @@ module.exports = {
       },
     },
     extend: {
+      // CORRECCIÓN: Se definen colores específicos para el modo claro y oscuro
+      // para que los componentes como 'card', 'input', etc., se adapten.
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

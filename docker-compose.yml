@@ -5,9 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql-db
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
+    env_file: .env
     ports:
       - "${DB_PORT}:3306"
     volumes:
@@ -19,47 +17,69 @@ services:
       timeout: 5s
       retries: 5
 
+  # NUEVO SERVICIO: MailHog para capturar correos localmente
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # Puerto SMTP para que los servicios envíen correos
+      - "8025:8025" # Puerto para la interfaz web donde verás los correos
+
   auth-service:
     build: ./backend-services/auth-service
     container_name: auth-service
     restart: unless-stopped
-    depends_on: { db: { condition: service_healthy } }
+    depends_on:
+      db:
+        condition: service_healthy
+      # El servicio de auth ahora depende de que mailhog esté disponible
+      mailhog:
+        condition: service_started
+    env_file: .env
     environment:
-      PORT: ${AUTH_SERVICE_PORT}
-      DB_HOST: db
-      DB_USER: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD}
-      DB_DATABASE: ${DB_DATABASE}
-      JWT_SECRET: ${JWT_SECRET}
-    expose: ["${AUTH_SERVICE_PORT}"]
+      - DB_HOST=db
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      # CORRECCIÓN: Apuntamos al servicio mailhog como nuestro servidor de correo
+      - EMAIL_HOST=mailhog
+      - EMAIL_PORT=1025
+      - EMAIL_SECURE=false
+      # MailHog no necesita usuario ni contraseña
+      - EMAIL_USER=
+      - EMAIL_PASS=
+    expose:
+      - "${AUTH_SERVICE_PORT}"
 
   cuaderno-service:
     build: ./backend-services/cuaderno-service
     container_name: cuaderno-service
     restart: unless-stopped
-    depends_on: { db: { condition: service_healthy } }
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
     environment:
-      PORT: ${CUADERNO_SERVICE_PORT}
-      DB_HOST: db
-      DB_USER: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD}
-      DB_DATABASE: ${DB_DATABASE}
-      # Esta es la línea que hemos añadido para consistencia
-      JWT_SECRET: ${JWT_SECRET}
-    expose: ["${CUADERNO_SERVICE_PORT}"]
+      - DB_HOST=db
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    expose:
+      - "${CUADERNO_SERVICE_PORT}"
 
   app-web:
     build: ./frontend-clients/app-web
     container_name: react-web-app
     restart: unless-stopped
-    ports: ["3000:80"]
+    ports:
+      - "3000:80"
 
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
     restart: unless-stopped
-    ports: ["${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"]
-    depends_on: [cuaderno-service, auth-service]
+    ports:
+      - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
+    depends_on:
+      - cuaderno-service
+      - auth-service
 
 volumes:
   db-data:
